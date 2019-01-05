@@ -74,7 +74,7 @@ class _EAST_head(HybridBlock):
     def hybrid_forward(self, F, x, *args, **kwargs):
         score_map = self.score_branch(x)
         geo_map = self.geo_branch(x) * self.text_scale
-        angle_map = self.theta_branch(x) * np.pi / 2.
+        angle_map = (self.theta_branch(x) - 0.5) * np.pi / 2.
         geometry_map = F.Concat(geo_map, angle_map, dim=1)
 
         return score_map, geometry_map
