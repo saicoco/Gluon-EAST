@@ -22,8 +22,7 @@ def main(train_dir, ctx=None, lr=0.0001, epoches=20, batch_size=16, checkpoint_p
     data_num = len(ic_dataloader) * batch_size
     # model
     east_model = east.EAST(nclass=2, text_scale=1024, ctx=ctx)
-    # east_model.load_parameters(filename='/Users/gengjiajia/.mxnet/models/resnet50_v1b-e263a986.params', allow_missing=True,
-    #                       ignore_extra=True)
+
     east_model.collect_params().initialize(init=mx.init.Xavier(), verbose=True, ctx=ctx)
     if not debug:
         east_model.hybridize()
@@ -46,23 +45,20 @@ def main(train_dir, ctx=None, lr=0.0001, epoches=20, batch_size=16, checkpoint_p
             trainer.set_learning_rate(trainer.learning_rate*lr_factor)
             lr_counter += 1
         for i, batch_data in enumerate(ic_dataloader):
-            im, score_map, geo_map, training_mask = map(lambda x: utils.split_and_load(x, ctx), batch_data)
-
+            im, score_map, geo_map, training_mask = map(lambda x: x.as_in_context(ctx), batch_data)
 
             with autograd.record(train_mode=True):
-                for im_x, score_map_x, geo_map_x, training_mask_x in zip(im, score_map, geo_map, training_mask):
-                    f_score, f_geo = east_model(im_x)
-                    batch_loss = EAST_loss(score_map_x, f_score, geo_map_x, f_geo, training_mask_x)
-                    loss.append(batch_loss)
 
-                for bl in loss:
-                    bl.backward()
+                f_score, f_geo = east_model(im)
+                batch_loss = EAST_loss(score_map, f_score, geo_map, f_geo, training_mask)
+                loss.append(batch_loss)
+                batch_loss.backward()
 
             trainer.step(batch_size)
             # if i % 2 == 0:
             step = epoch * data_num  + i * batch_size
             model_loss = np.mean(map(lambda x: x.asnumpy()[0], loss))
-            summ_writer.add_scalar('model_loss', model_loss)
+            summ_writer.add_scalar('model_loss', model_loss[0])
             logging.info("step: {}, loss: {}".format(step, batch_loss.asnumpy()))
         ckpt_file = os.path.join(checkpoint_path, "model_{}.params".format(step))
         east_model.collect_params().save_parameters(ckpt_file)
@@ -73,4 +69,4 @@ if __name__ == '__main__':
     ckpt_path = sys.argv[2]
     ctxes = sys.argv[3]
     ctxes = [map(eval, ctxes.split(','))]
-    main(train_dir=train_dir, ctx=ctxes, checkpoint_path=ckpt_path)
+    main(train_dir=train_dir, ctx=ctxes, checkpoint_path=ckpt_path, debug=True)
