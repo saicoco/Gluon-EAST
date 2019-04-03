@@ -21,6 +21,7 @@ class EASTLoss(gluon.loss.Loss):
         intersection = F.sum(score_gt * score_pred * training_masks)
         union = F.sum(training_masks * score_gt) + F.sum(training_masks * score_pred) + eps
         dice_loss = 1. - (2 * intersection / union)
+        classification_loss = self.cls_weight * dice_loss
 
         # AABB loss
         top_gt, right_gt, bottom_gt, left_gt, angle_gt = F.split(geo_gt, axis=1, num_outputs=5, squeeze_axis=1)
@@ -37,4 +38,4 @@ class EASTLoss(gluon.loss.Loss):
         L_theta = 1.0 - F.cos(angle_gt - angle_pred)
         L_g = L_AABB + 20. * L_theta
 
-        return F.mean(L_g * score_gt * training_masks) + dice_loss
+        return F.mean(L_g * score_gt * training_masks) + classification_loss

@@ -12,10 +12,10 @@ import argparse
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('im_dir', type=str, default='demo_images/')
-parser.add_argument('ckpt_path', type=str, default='ckpt/model_32992.params')
-parser.add_argument('out_dir', type=str, default='result')
-parser.add_argument('gpuid', type=int, default=-1)
+parser.add_argument('--im_dir', type=str, default='demo_images/')
+parser.add_argument('--ckpt_path', type=str, default='ckpt/model_12992.params')
+parser.add_argument('--out_dir', type=str, default='result')
+parser.add_argument('--gpuid', type=int, default=-1)
 args = parser.parse_args()
 
 def resize_image(im, max_side_len=2400):
@@ -107,6 +107,7 @@ def main(im_dir, ckpt_path, ctx, out_dir='result', write_images=True):
     # east_model.hybridize()
     east_model.load_parameters(ckpt_path, ctx)
     east_transform = transforms.Compose([
+        transforms.ToTensor(),
         transforms.Normalize([.485, .456, .406], [.229, .224, .225])
     ])
 
@@ -115,10 +116,10 @@ def main(im_dir, ckpt_path, ctx, out_dir='result', write_images=True):
         im_path = os.path.join(im_dir, im_name)
         start_time = time.time()
         im = cv2.imread(im_path)
-        im_resized, (ratio_h, ratio_w) = resize_image(im, max_side_len=784)
+        im_resized, (ratio_h, ratio_w) = resize_image(im, max_side_len=2048)
         timer = {'net': 0, 'restore': 0, 'nms': 0}
         start = time.time()
-        im_resized = east_transform(mx.nd.array(im_resized.transpose((2, 0, 1))))
+        im_resized = east_transform(mx.nd.array(np.array(im_resized).astype('float32')))
 
         f_score, f_geometry = east_model.forward(im_resized.expand_dims(axis=0))
         timer['net'] = time.time() - start
@@ -132,8 +133,8 @@ def main(im_dir, ckpt_path, ctx, out_dir='result', write_images=True):
 
         if boxes is not None:
             boxes = boxes[:, :8].reshape((-1, 4, 2))
-            boxes[:, :, 0] /= ratio_w
-            boxes[:, :, 1] /= ratio_h
+            boxes[:, :, 0] /= ratio_h
+            boxes[:, :, 1] /= ratio_w
 
         duration = time.time() - start_time
         print('[timing] {}'.format(duration))
@@ -144,20 +145,20 @@ def main(im_dir, ckpt_path, ctx, out_dir='result', write_images=True):
                 out_dir,
                 '{}.txt'.format(
                     os.path.basename(im_path).split('.')[0]))
-
+            print("num_Boxes:{}".format(len(boxes)))
             with open(res_file, 'w') as f:
                 for box in boxes:
                     # to avoid submitting errors
                     box = sort_poly(box.astype(np.int32))
-                    if np.linalg.norm(box[0] - box[1]) < 5 or np.linalg.norm(box[3] - box[0]) < 5:
-                        continue
+                    # if np.linalg.norm(box[0] - box[1]) < 5 or np.linalg.norm(box[3] - box[0]) < 5:
+                    #     continue
                     f.write('{},{},{},{},{},{},{},{}\r\n'.format(
                         box[0, 0], box[0, 1], box[1, 0], box[1, 1], box[2, 0], box[2, 1], box[3, 0], box[3, 1],
                     ))
                     cv2.polylines(im[:, :, ::-1].astype(np.uint8), [box.astype(np.int32).reshape((-1, 1, 2))], True, color=(255, 255, 0),
-                                  thickness=1)
-        if write_images:
-            img_path = os.path.join(out_dir, im_name)
-            cv2.imwrite(img_path, im)
+                                  thickness=2)
+                if write_images:
+                    img_path = os.path.join(out_dir, im_name)
+                    cv2.imwrite(img_path, im)
 if __name__ == '__main__':
     main(im_dir=args.im_dir, ckpt_path=args.ckpt_path, ctx=args.gpuid, out_dir=args.out_dir)

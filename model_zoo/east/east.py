@@ -17,14 +17,14 @@ class EAST(SegBaseModel):
 
         self.head = _EAST_head(text_scale=text_scale, prefix='east_head')
         # [64, 128, 256, 512]
-        self.conv_stage1 = nn.Conv2D(128, 1, prefix='decoder_conv1')
-        self.conv_stage1_3 = nn.Conv2D(128, 3, padding=(1, 1), prefix='decoder_conv1_1')
+        self.conv_stage1 = nn.Conv2D(128, 1, activation='relu', prefix='decoder_conv1')
+        self.conv_stage1_3 = nn.Conv2D(128, 3, padding=(1, 1), activation='relu', prefix='decoder_conv1_1')
 
-        self.conv_stage2 = nn.Conv2D(64, 1, prefix='decoder_conv2')
-        self.conv_stage2_3 = nn.Conv2D(64, 3, padding=(1, 1), prefix='decoder_conv2_1')
+        self.conv_stage2 = nn.Conv2D(64, 1, activation='relu',prefix='decoder_conv2')
+        self.conv_stage2_3 = nn.Conv2D(64, 3, padding=(1, 1), activation='relu', prefix='decoder_conv2_1')
 
-        self.conv_stage3 = nn.Conv2D(32, 1, prefix='decoder_conv3')
-        self.conv_stage3_3 = nn.Conv2D(32, 3, padding=(1, 1), prefix='decoder_conv3_1')
+        self.conv_stage3 = nn.Conv2D(32, 1, activation='relu', prefix='decoder_conv3')
+        self.conv_stage3_3 = nn.Conv2D(32, 3, padding=(1, 1), activation='relu', prefix='decoder_conv3_1')
         self.crop_size = crop_size
 
     def base_forward(self, x):
