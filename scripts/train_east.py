@@ -2,7 +2,7 @@
 import mxnet as mx
 from mxnet import gluon, autograd
 import gluoncv as gcv
-from model_zoo import east, EASTLoss
+from model_zoo import east, EASTLoss, east_fpn
 from data.ic_data import text_detection_data
 from mxnet.gluon.data import DataLoader
 from mxnet.gluon import utils
@@ -24,6 +24,7 @@ def main(train_dir, ctx=None, lr=0.0001, epoches=20, batch_size=16, checkpoint_p
     data_num = len(ic_dataloader) * batch_size
     # model
     east_model = east.EAST(nclass=2, text_scale=1024)
+    # east_model = east(text_scale=1024)
 
     east_model.collect_params().initialize(init=mx.init.Xavier(), verbose=True, ctx=context)
     if not debug:
